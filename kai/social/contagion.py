@@ -23,12 +23,23 @@ EMOTION_TO_EVENT = {
 
 
 class MoodContagion:
-    def __init__(self, llm, homeo: Homeostasis, neuro: NeurochemState) -> None:
+    def __init__(self, llm, homeo: Homeostasis, neuro: NeurochemState, hf=None) -> None:
         self.llm = llm
         self.homeo = homeo
         self.neuro = neuro
+        self.hf = hf  # optional HFClient — preferred path (free + fast)
 
     async def classify_emotion(self, text: str) -> str:
+        # Path 1: free HF Russian emotion classifier (no LLM cost)
+        if self.hf is not None:
+            try:
+                ru = await self.hf.classify_emotion(text)
+                if ru and ru in EMOTION_TO_EVENT:
+                    return ru
+            except Exception as e:  # noqa: BLE001
+                logger.warn("contagion", f"hf classify failed: {e!r}")
+
+        # Path 2: LLM fallback
         prompt = (
             "Определи доминирующую эмоцию в этом сообщении. Ответь одним словом из списка: "
             "радость, восторг, тепло, грусть, уныние, тревога, стресс, злость, усталость, нейтрально.\n\n"

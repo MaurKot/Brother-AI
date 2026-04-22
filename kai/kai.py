@@ -20,7 +20,9 @@ from .dna.identity import SovereignIdentity
 from .dna.neurochem import BehaviorModulator, Homeostasis, NeurochemState
 from .dna.temperament import Temperament
 from .dna.values import ValueSystem
+from .limbs.hf_client import HFClient
 from .limbs.telegram_bot import TelegramBot
+from .limbs.web_search import WebSearch
 from .llm.router import LLMRouter
 from .logger import logger
 from .mind.analogy import AnalogySystem
@@ -108,7 +110,9 @@ class Kai:
         self.drives = DriveSystem(self.neuro)
         self.anticipation = AnticipationSystem(self.neuro, self.homeo); self.anticipation.load(P_ANTIC)
         self.shadow = ShadowThinking(self.llm, self.memory, self.working)
-        self.contagion = MoodContagion(self.llm, self.homeo, self.neuro)
+        self.hf = HFClient()
+        self.web_search = WebSearch()
+        self.contagion = MoodContagion(self.llm, self.homeo, self.neuro, hf=self.hf)
         self.temporal = TemporalAwareness(self.identity)
         self.anomaly = AnomalyDetector()
         self.resources = ResourceSensor(self.llm, self.memory, datetime.utcnow())
@@ -116,7 +120,7 @@ class Kai:
         # Phase-2 cognitive systems
         self.predictions = PredictiveEngine(self.neuro, self.homeo); self.predictions.load(P_PRED)
         self.analogy = AnalogySystem(self.llm, self.memory)
-        self.curiosity = CuriosityEngine(self.llm, self.memory, self.homeo, self.neuro); self.curiosity.load(P_CURIO)
+        self.curiosity = CuriosityEngine(self.llm, self.memory, self.homeo, self.neuro, web=self.web_search); self.curiosity.load(P_CURIO)
         self.creative = CreativeEngine(self.llm, self.memory, self.neuro, self.homeo); self.creative.load(P_CREATE)
         self.goals = GoalSystem(); self.goals.load(P_GOALS)
         self.planner = TaskPlanner(); self.planner.load(P_TASKS)
@@ -192,6 +196,8 @@ class Kai:
         self.shutdown_mgr.register(self._farewell_to_brother)
         self.shutdown_mgr.register(self.web.stop)
         self.shutdown_mgr.register(self.telegram.stop)
+        self.shutdown_mgr.register(self.hf.close)
+        self.shutdown_mgr.register(self.web_search.close)
         self.shutdown_mgr.register(self.llm.aclose)
 
     async def _farewell_to_brother(self) -> None:

@@ -16,12 +16,14 @@ class OpenQuestion:
 
 
 class CuriosityEngine:
-    def __init__(self, llm, memory, homeo, neuro, max_questions: int = 30) -> None:
+    def __init__(self, llm, memory, homeo, neuro, max_questions: int = 30,
+                 web=None) -> None:
         self.llm = llm
         self.memory = memory
         self.homeo = homeo
         self.neuro = neuro
         self.max_questions = max_questions
+        self.web = web  # optional WebSearch — enables grounded investigation
         self.questions: Deque[OpenQuestion] = deque(maxlen=max_questions)
 
     def add(self, text: str, weight: float = 0.5) -> None:
@@ -33,21 +35,48 @@ class CuriosityEngine:
         self.questions.append(OpenQuestion(text=text, weight=weight))
 
     async def ponder_one(self) -> Optional[str]:
-        """Take one open question and produce a tentative insight (no external web)."""
+        """Take one open question. If web search is wired, ground the answer in real sources."""
         if not self.questions:
             return None
-        # take heaviest
         q = max(self.questions, key=lambda x: x.weight)
-        prompt = (
-            f"Ты сам себе задал вопрос: «{q.text}»\n"
-            f"Подумай и сформулируй гипотезу или направление для ответа в 2-3 предложения. "
-            f"Не делай вид, что знаешь — допускай неуверенность."
-        )
-        ans = (await self.llm.complete(prompt, depth="fast", max_tokens=200)).strip()
+
+        # Try to gather real-world context first.
+        evidence = ""
+        if self.web is not None:
+            try:
+                evidence = await self.web.investigate(q.text)
+            except Exception:
+                evidence = ""
+
+        if evidence:
+            prompt = (
+                f"Я сам себе задал вопрос: «{q.text}»\n"
+                f"Я нашёл в открытых источниках:\n{evidence}\n\n"
+                f"Сформулируй для себя короткий вывод (2-3 предложения) от первого лица. "
+                f"Если источники противоречат — отметь это. Не говори «согласно источнику»."
+            )
+            tag = "curiosity_grounded"
+        else:
+            prompt = (
+                f"Я сам себе задал вопрос: «{q.text}»\n"
+                f"Подумай и сформулируй гипотезу или направление для ответа в 2-3 предложения. "
+                f"Не делай вид, что знаешь — допускай неуверенность."
+            )
+            tag = "curiosity"
+
+        try:
+            ans = (await self.llm.complete(prompt, depth="fast", max_tokens=220)).strip()
+        except Exception:
+            return None
+
         if ans:
-            self.memory.save(f"вопрос: {q.text}\nдумаю: {ans}", emotion="любопытство",
-                             importance=0.6, tags=["curiosity"])
-            self.homeo.apply_event(self.neuro, "new_discovery", scale=0.5)
+            mem_text = f"вопрос: {q.text}\nдумаю: {ans}"
+            if evidence:
+                mem_text += f"\n[оперся на: {evidence[:300]}…]"
+            self.memory.save(mem_text, emotion="любопытство",
+                             importance=0.65 if evidence else 0.6, tags=[tag])
+            self.homeo.apply_event(self.neuro, "new_discovery",
+                                   scale=0.7 if evidence else 0.5)
             try:
                 self.questions.remove(q)
             except ValueError:
