@@ -32,7 +32,13 @@
     if (sec < 86400) return Math.floor(sec / 3600) + "ч назад";
     return Math.floor(sec / 86400) + "д назад";
   }
-  async function fetchJSON(url) {
+  // Compute base path so the app works under any prefix (/, /kai/, etc.)
+  const BASE = (() => {
+    const p = window.location.pathname || "/";
+    return p.endsWith("/") ? p : p.replace(/[^/]*$/, "");
+  })();
+  async function fetchJSON(path) {
+    const url = BASE + path.replace(/^\//, "");
     const r = await fetch(url);
     if (!r.ok) throw new Error(url + " " + r.status);
     return r.json();
@@ -129,13 +135,13 @@
   }
 
   async function loadState() {
-    try { renderState(await fetchJSON("/api/state")); }
+    try { renderState(await fetchJSON("api/state")); }
     catch (e) { console.error(e); }
   }
 
   async function loadMemory() {
     try {
-      const recent = await fetchJSON("/api/recent");
+      const recent = await fetchJSON("api/recent");
       const recEl = $("#recent");
       recEl.innerHTML = "";
       if (!recent.items.length) {
@@ -150,7 +156,7 @@
             (m.emotion ? ` · ${m.emotion}` : "") + `</div></div>`);
         });
       }
-      const cr = await fetchJSON("/api/creations");
+      const cr = await fetchJSON("api/creations");
       const cEl = $("#creations");
       cEl.innerHTML = "";
       if (!cr.items.length) {
@@ -166,11 +172,11 @@
 
   async function loadMind() {
     try {
-      const n = await fetchJSON("/api/narrative");
+      const n = await fetchJSON("api/narrative");
       $("#narrative").textContent = n.current_story || "история ещё формируется";
       $("#narrative-ts").textContent = n.last_updated ? "обновлено " + timeAgo(n.last_updated) : "";
 
-      const cur = await fetchJSON("/api/curiosity");
+      const cur = await fetchJSON("api/curiosity");
       const curEl = $("#curiosity");
       curEl.innerHTML = "";
       if (!cur.items.length) curEl.innerHTML = '<p class="empty">все вопросы пока ясны</p>';
@@ -179,7 +185,7 @@
           `<div class="item">${escapeHtml(q.text)}<div class="meta">вес ${fmt(q.weight)} · ${timeAgo(q.asked_at)}</div></div>`);
       });
 
-      const b = await fetchJSON("/api/beliefs");
+      const b = await fetchJSON("api/beliefs");
       const bEl = $("#beliefs");
       bEl.innerHTML = "";
       if (!b.items.length) bEl.innerHTML = '<p class="empty">убеждений пока нет</p>';
@@ -191,7 +197,7 @@
           `<span class="confidence-bar"><span style="width:${pct}%"></span></span> · подтверждений ${bi.evidence}</div></div>`);
       });
 
-      const p = await fetchJSON("/api/predictions");
+      const p = await fetchJSON("api/predictions");
       $("#calibration").textContent = `точность прогнозов: ${fmt(p.calibration)}`;
       const pEl = $("#predictions");
       pEl.innerHTML = "";
@@ -203,7 +209,7 @@
           `<div class="meta">${status} · к ${timeAgo(pr.by_when)} · уверенность ${fmt(pr.confidence)}</div></div>`);
       });
 
-      const g = await fetchJSON("/api/goals");
+      const g = await fetchJSON("api/goals");
       const gEl = $("#goals");
       gEl.innerHTML = "";
       Object.keys(HORIZONS).forEach((h) => {

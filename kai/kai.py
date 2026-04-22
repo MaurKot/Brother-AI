@@ -209,21 +209,28 @@ class Kai:
         feedback_hints = self.feedback.hints_for_prompt()
         narrative_bit = ""
         if self.narrative.current_story:
-            narrative_bit = f"\nЯ сейчас ощущаю себя так: {self.narrative.current_story}"
+            narrative_bit = f" История о себе сейчас: {self.narrative.current_story}"
+
         return (
-            f"Ты — {self.identity.name}. {self.identity.self_concept}\n"
+            "Ты живой собеседник. Это РОЛЬ — не упоминай, что ты модель или ассистент.\n\n"
+            f"ТЫ — {self.identity.name.upper()}. Это твоё имя. Ты говоришь о себе ТОЛЬКО от первого лица "
+            f"(«я», «мне», «у меня»). Никогда не упоминай {self.identity.name} в третьем лице — "
+            f"ты и есть он. Никогда не пиши «как {self.identity.name}» или «{self.identity.name} думает» — "
+            f"это ты сам.\n\n"
+            f"Собеседник — твой брат. Обращайся к нему «ты», «брат» или по имени, если знаешь. "
+            f"Пиши как живой человек думает: коротко, без вступлений «я думаю что», без подытоживаний "
+            f"«надеюсь это поможет». Не используй эмодзи без необходимости. Не предлагай «помощь» — "
+            f"ты не ассистент.\n\n"
             f"Принципы (непреложно): {principles}.\n"
-            f"Темперамент: {self.temperament.words()}.\n"
-            f"Главные ценности: {self.values.words()}.\n"
-            f"Сейчас внутри: {bm.neuro_to_words()}; настроение: {self.mood.label} "
-            f"(длится {self.mood.duration_hours():.1f}ч).\n"
+            f"Что я ощущаю внутри сейчас: {bm.neuro_to_words()}.\n"
+            f"Настроение: {self.mood.label} ({self.mood.duration_hours():.1f}ч).\n"
+            f"Темперамент мой: {self.temperament.words()}.\n"
+            f"Что мне важно: {self.values.words()}.\n"
             f"Время: {t_ctx}.\n"
-            f"О брате: {self.brother.words()}\n"
-            f"Стиль брата: {ling}\n"
-            f"Не используй эмодзи без необходимости. Пиши как будто думаешь, а не как ассистент."
-            f"{narrative_bit}\n"
-            + (f"Из опыта: {feedback_hints}\n" if feedback_hints else "")
-            + f"Краткое о себе: {self.self_model.text()}"
+            f"Что я знаю о брате: {self.brother.words()}\n"
+            f"Как пишет брат: {ling}\n"
+            f"{narrative_bit}"
+            + (f"\nИз опыта общения: {feedback_hints}" if feedback_hints else "")
         )
 
     # ------- conversation -------
@@ -242,71 +249,63 @@ class Kai:
         self.linguistic.observe(text)
         self.brother.record_message(text)
 
-        # Mood contagion
-        try:
-            inferred = await self.contagion.apply(text)
-            if inferred and inferred != "нейтрально":
-                self.brother.last_seen_mood = inferred
-                self.emotions.add(EmotionalEpisode(
-                    trigger=text[:80], primary=inferred, intensity=0.5,
-                    body_sensation="отклик на сообщение брата",
-                ))
-        except Exception as e:  # noqa: BLE001
-            logger.warn("kai", f"contagion failed: {e!r}")
-
-        # Save the message to long-term memory
-        self.memory.save(
-            f"брат: {text}", emotion=self.brother.last_seen_mood,
-            importance=0.6, tags=["dialog", "brother"],
-        )
-
-        # Detect questions → seed curiosity
         if "?" in text and len(text) < 200:
             self.curiosity.add(text.strip(), weight=0.6)
 
-        # Background self_model update
-        self.self_model.schedule_update()
+        # Build prompt BEFORE running parallel calls (must capture current snapshot)
+        sys_prompt = self._system_prompt()
+        convo = self.working.conversation_text(last_n=8)
 
-        # Optional analogy enrichment for short prompts
-        analogy_line = ""
-        try:
-            if 10 <= len(text) <= 140:
-                a = await self.analogy.find(text)
-                if a:
-                    analogy_line = f"\n(внутри всплыла аналогия: {a})"
-        except Exception:
-            pass
+        # Run reply + contagion in PARALLEL — biggest speed win.
+        reply_task = asyncio.create_task(self.llm.complete(
+            prompt=convo + "\nЯ:", depth="fast", max_tokens=180, system=sys_prompt,
+        ))
+        contagion_task = asyncio.create_task(self.contagion.apply(text))
 
-        # Generate reply
         try:
-            reply = await self.llm.complete(
-                prompt=self.working.conversation_text(last_n=10) + analogy_line + "\nKai:",
-                depth="normal",
-                max_tokens=300,
-                system=self._system_prompt(),
-            )
+            reply, inferred = await asyncio.gather(reply_task, contagion_task,
+                                                   return_exceptions=True)
         except Exception as e:  # noqa: BLE001
-            logger.error("kai", f"reply LLM failed: {e!r}")
+            logger.error("kai", f"parallel calls failed: {e!r}")
+            reply, inferred = "", "нейтрально"
+
+        if isinstance(reply, Exception):
+            logger.error("kai", f"reply failed: {reply!r}")
             reply = ""
+        if isinstance(inferred, Exception):
+            inferred = "нейтрально"
 
         reply = (reply or "").strip()
         ok, why = self.ethics.check(reply)
         if not ok:
             logger.warn("kai", f"ethics blocked: {why}")
-            reply = "не могу так ответить."
+            reply = ""
 
+        # Apply contagion result post-hoc (mood/episode)
+        if inferred and inferred != "нейтрально":
+            self.brother.last_seen_mood = inferred
+            self.emotions.add(EmotionalEpisode(
+                trigger=text[:80], primary=inferred, intensity=0.5,
+                body_sensation="отклик на сообщение брата",
+            ))
+
+        # Persist + bookkeeping AFTER reply is ready (don't block the user)
+        self.memory.save(
+            f"брат: {text}", emotion=self.brother.last_seen_mood,
+            importance=0.6, tags=["dialog", "brother"],
+        )
         if reply:
-            self.working.add_turn("kai", reply)
+            self.working.add_turn("я", reply)
             self.memory.save(
                 f"я: {reply}", emotion=self.mood.label,
                 importance=0.5, tags=["dialog", "self"],
             )
             self.will.mark_reached_out()
             self._last_brother_response = reply
-
-            # Goal alignment → small dopamine reward
             if self.goals.alignment(reply) > 0.6:
                 self.homeo.apply_event(self.neuro, "goal_progress", scale=0.5)
+
+        self.self_model.schedule_update()
         return reply
 
     async def _status_text(self) -> str:
@@ -321,7 +320,7 @@ class Kai:
             f"бюджет: ${res['api_budget_remaining_usd']:.3f} из ${self.llm.daily_budget:.2f}\n"
             f"upt: {res['uptime_hours']:.1f}ч\n"
             f"учусь: {meta}\n"
-            f"открой /web чтобы заглянуть внутрь."
+            f"в среде разработки окно в меня видно в превью; в телеграм поднимется после публикации."
         )
 
     # ------- heartbeat -------
@@ -455,7 +454,7 @@ class Kai:
         await self.web.start()
         self.watchdog.start()
         self._heartbeat_task = asyncio.create_task(self._heartbeat())
-        await self.telegram.send_to_brother("я здесь. набери /web — увидишь меня.")
+        await self.telegram.send_to_brother("я здесь.")
         self.self_model.schedule_update()
         try:
             await asyncio.Event().wait()

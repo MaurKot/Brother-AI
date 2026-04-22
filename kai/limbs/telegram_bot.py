@@ -37,9 +37,13 @@ class TelegramBot:
     async def _cmd_web(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if update.effective_user.id != BROTHER_TELEGRAM_ID:
             return
-        url = self._webapp_url()
+        url = os.environ.get("KAI_WEBAPP_URL", "").strip()
         if not url:
-            await update.message.reply_text("веб-окно ещё не развёрнуто. позже.")
+            await update.message.reply_text(
+                "окно в меня живёт пока только в среде разработки.\n"
+                "чтобы открывалось прямо в телеграме — опубликуй меня, "
+                "потом задай KAI_WEBAPP_URL равным адресу публикации."
+            )
             return
         if not url.startswith("https://"):
             await update.message.reply_text(f"открой меня здесь: {url}")
