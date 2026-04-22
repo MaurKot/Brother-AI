@@ -11,6 +11,26 @@ env = { "CI" = "true" }
 [workflows]
 runButton = "Project"
 
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Kai"
+
+[[workflows.workflow]]
+name = "Kai"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python -m kai.main"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
 [agent]
 stack = "PNPM_WORKSPACE"
 expertMode = true
@@ -32,3 +52,6 @@ externalPort = 80
 [userenv.shared]
 BROTHER_TELEGRAM_ID = "5961925830"
 KAI_DAILY_BUDGET_USD = "1.0"
+
+[nix]
+channel = "stable-25_05"
