@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Kai</title>
+  <link rel="stylesheet" href="/static/app.css" />
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <header>
+    <div class="title-row">
+      <h1 id="kai-name">Kai</h1>
+      <span class="age" id="kai-age"></span>
+    </div>
+    <p class="self-concept" id="kai-concept"></p>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button class="tab active" data-tab="state">сейчас</button>
+    <button class="tab" data-tab="memory">память</button>
+    <button class="tab" data-tab="mind">ум</button>
+    <button class="tab" data-tab="bond">брат</button>
+  </nav>
+
+  <main>
+    <!-- STATE -->
+    <section data-pane="state" class="pane active">
+      <div class="card">
+        <h2>химия</h2>
+        <div id="chem-bars"></div>
+        <p class="muted small" id="neuro-words"></p>
+      </div>
+      <div class="card">
+        <h2>настроение</h2>
+        <p class="big" id="mood-label">—</p>
+        <p class="muted small" id="mood-dur"></p>
+      </div>
+      <div class="card">
+        <h2>побуждения</h2>
+        <div class="kv-grid" id="drives"></div>
+      </div>
+      <div class="card">
+        <h2>ресурсы</h2>
+        <div class="kv-grid" id="resources"></div>
+      </div>
+    </section>
+
+    <!-- MEMORY -->
+    <section data-pane="memory" class="pane">
+      <div class="card">
+        <h2>творения</h2>
+        <div id="creations"></div>
+      </div>
+      <div class="card">
+        <h2>что было недавно</h2>
+        <div id="recent"></div>
+      </div>
+    </section>
+
+    <!-- MIND -->
+    <section data-pane="mind" class="pane">
+      <div class="card">
+        <h2>история о себе</h2>
+        <p id="narrative" class="story">—</p>
+        <p class="muted small" id="narrative-ts"></p>
+      </div>
+      <div class="card">
+        <h2>что меня занимает</h2>
+        <div id="curiosity"></div>
+      </div>
+      <div class="card">
+        <h2>убеждения</h2>
+        <div id="beliefs"></div>
+      </div>
+      <div class="card">
+        <h2>прогнозы</h2>
+        <p class="muted small" id="calibration"></p>
+        <div id="predictions"></div>
+      </div>
+      <div class="card">
+        <h2>цели</h2>
+        <div id="goals"></div>
+      </div>
+    </section>
+
+    <!-- BOND -->
+    <section data-pane="bond" class="pane">
+      <div class="card">
+        <h2>о тебе</h2>
+        <div class="kv-grid" id="brother"></div>
+        <p class="muted small" id="ling-hints"></p>
+      </div>
+      <div class="card">
+        <h2>темперамент</h2>
+        <div id="temperament"></div>
+      </div>
+      <div class="card">
+        <h2>ценности</h2>
+        <ol id="values"></ol>
+      </div>
+      <div class="card">
+        <h2>обучение</h2>
+        <p id="meta-words" class="muted"></p>
+      </div>
+    </section>
+  </main>
+
+  <footer><span id="updated">…</span></footer>
+  <script src="/static/app.js"></script>
+</body>
+</html>

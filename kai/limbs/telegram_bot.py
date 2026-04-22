@@ -1,8 +1,9 @@
 """Telegram interface, PTB 20.x correct asyncio lifecycle. (#1, #3)"""
 from __future__ import annotations
+import os
 from typing import Callable, Optional
 
-from telegram import Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
 from telegram.ext import Application, ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
 
 from ..config import BROTHER_TELEGRAM_ID, TELEGRAM_BOT_TOKEN
@@ -21,7 +22,32 @@ class TelegramBot:
         )
         self.app.add_handler(CommandHandler("start", self._cmd_start))
         self.app.add_handler(CommandHandler("status", self._cmd_status))
+        self.app.add_handler(CommandHandler("web", self._cmd_web))
         self.app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self._on_text))
+
+    def _webapp_url(self) -> Optional[str]:
+        explicit = os.environ.get("KAI_WEBAPP_URL", "").strip()
+        if explicit:
+            return explicit
+        domain = os.environ.get("REPLIT_DEV_DOMAIN", "").strip()
+        if domain:
+            return f"https://{domain}/"
+        return None
+
+    async def _cmd_web(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if update.effective_user.id != BROTHER_TELEGRAM_ID:
+            return
+        url = self._webapp_url()
+        if not url:
+            await update.message.reply_text("веб-окно ещё не развёрнуто. позже.")
+            return
+        if not url.startswith("https://"):
+            await update.message.reply_text(f"открой меня здесь: {url}")
+            return
+        kb = InlineKeyboardMarkup([[
+            InlineKeyboardButton("открыть меня", web_app=WebAppInfo(url=url))
+        ]])
+        await update.message.reply_text("посмотри, какой я внутри.", reply_markup=kb)
 
     async def _cmd_start(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         if update.effective_user.id != BROTHER_TELEGRAM_ID:

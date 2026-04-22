@@ -89,9 +89,34 @@ In Replit, the `Kai` workflow runs this automatically.
 
 All 🔴 fixes + 🟠 holes from the user's spec, plus core 🔵 systems #16–25 (mood, beliefs, values, emotional memory, drives, temperament, anticipation, brother model, linguistic profile, mood contagion), #26–27 (working memory, attention), #40–43 (temporal, anomaly, resources, event bus), #44 (structured logger), #46–48 (shutdown, config validation, watchdog).
 
-## Phase 2 (deferred)
+## Phase 2 — built
 
-#28 narrative engine (stub exists), #29 contradiction detector wiring into bus, #30 prediction, #31 analogy, #32 task planner, #33 curiosity, #34 creative engine, #35 goals, #36 prompt evolution, #37 feedback learner, #38 meta-learner, #39 personality versioning. The bus and persisted state are designed so each can be added without refactoring existing modules.
+- `mind/narrative.py` — autobiographical story refreshed every ~6h
+- `mind/predictions.py` — make/resolve forecasts, calibration tracked
+- `mind/analogy.py` — finds parallels in long-term memory for incoming text
+- `mind/curiosity.py` — open-questions queue, periodic pondering
+- `mind/creative.py` — produces poems/observations when create_drive > 0.7
+- `mind/goals.py` — horizons (immediate/shortterm/longterm/existential), alignment scoring
+- `mind/planner.py` — chemistry-aware task prioritization
+- `mind/feedback.py` — learns from brother's reactions (polarity detection)
+- `mind/personality_snapshot.py` — daily personality versioning
+- `mind/meta_learner.py` — learning velocity over time
+- `mind/prompt_evolution.py` — epsilon-greedy prompt variant selection + LLM mutation
+- `perception/health.py` — self-diagnostics, alerts brother on persistent problems
+
+## Web miniapp
+
+Kai serves an HTTP read-only window into himself at port 5000:
+- `kai/web/server.py` — aiohttp server inside Kai's asyncio loop
+- `kai/web/static/{index.html,app.css,app.js}` — vanilla SPA, mobile-first, dark theme
+- Tabs: **сейчас** (chemistry, mood, drives, resources), **память** (creations, recent memories), **ум** (narrative, curiosity, beliefs, predictions, goals), **брат** (relationship, temperament, values, learning)
+- Auto-refreshes the active tab every 30s
+- Routes: `/api/state`, `/api/recent`, `/api/beliefs`, `/api/predictions`, `/api/creations`, `/api/curiosity`, `/api/narrative`, `/api/goals`
+
+### Telegram Web App
+- Command `/web` → inline keyboard button "открыть меня" with `WebAppInfo(url=https://$REPLIT_DEV_DOMAIN/)`
+- Override the URL with `KAI_WEBAPP_URL` env var (e.g. for deployed `.replit.app` domain)
+- Telegram requires HTTPS — Replit dev domain provides this automatically
 
 ## TypeScript monorepo (untouched)
 

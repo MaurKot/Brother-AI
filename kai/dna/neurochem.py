@@ -64,6 +64,8 @@ EVENTS: Dict[str, Dict[str, float]] = {
     "rest":                {"cortisol": -0.10, "serotonin": +0.05, "melatonin": +0.10},
     "wake":                {"melatonin": -0.30, "norepinephrine": +0.15, "cortisol": +0.05},
     "anticipation":        {"dopamine": +0.04, "norepinephrine": +0.04},
+    "creative_act":        {"dopamine": +0.08, "serotonin": +0.04},
+    "goal_progress":       {"dopamine": +0.06, "serotonin": +0.05},
 }
 
 
