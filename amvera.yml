@@ -5,7 +5,6 @@ meta:
     version: latest
 
 build:
-  image: dockerfile
   dockerfile: Dockerfile
 
 run:

@@ -16,9 +16,7 @@
 ══════════════════════════════════════════════════════════════════════════════
 """
 from __future__ import annotations
-from typing import Optional
-
-import aiohttp
+from typing import Any, Optional
 
 from .. import config
 from ..logger import logger
@@ -39,13 +37,15 @@ class CustomLLMProvider:
         self.token = config.HF_TOKEN
         self.daily_budget = config.DAILY_BUDGET_USD
         self.spent_today = 0.0  # HF бесплатный
-        self._session: Optional[aiohttp.ClientSession] = None
+        self._session: Optional[Any] = None
 
     def remaining(self) -> float:
         """Оставшийся бюджет (для совместимости с LLMRouter)."""
         return max(0.0, self.daily_budget - self.spent_today)
 
-    async def _session_get(self) -> aiohttp.ClientSession:
+    async def _session_get(self) -> Any:
+        import aiohttp
+
         if self._session is None or self._session.closed:
             headers = {"Content-Type": "application/json"}
             if self.token:
