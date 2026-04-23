@@ -2,6 +2,11 @@
 """Demo script to test CustomLLMProvider."""
 import asyncio
 import os
+import sys
+from pathlib import Path
+
+# Ensure project root is on PYTHONPATH when run via pytest/importlib mode
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 # Set fake token for demo (replace with real)
 os.environ["HF_TOKEN"] = "your_huggingface_token_here"

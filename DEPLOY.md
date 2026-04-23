@@ -1,5 +1,15 @@
 # Развёртывание Кая
 
+## 0. Что подготовить заранее (где взять)
+
+1. **Telegram Bot Token**: открой @BotFather → `/newbot` → скопируй токен.
+2. **Твой Telegram ID**: открой @userinfobot → скопируй `Id` (число).
+3. **OpenAI API Key**: в кабинете OpenAI создай ключ (или используй OpenAI-совместимый прокси и его ключ).
+4. **SESSION_SECRET**: сгенерируй длинную случайную строку (например `python -c "import secrets; print(secrets.token_urlsafe(48))"`).
+5. *(Опционально)* **HF_TOKEN**: huggingface.co → Settings → Access Tokens → `Read`.
+
+> Рекомендация: перед деплоем заполни локально `.env` и проверь запуск через `python -m kai.main`.
+
 ## 1. Скачать проект
 
 В верхнем меню Replit нажми три точки рядом с названием проекта → **Download as zip**.
@@ -10,7 +20,7 @@ kai/                  # сам код
 requirements.txt
 pyproject.toml
 Dockerfile
-amvera.yml
+amvera.yaml
 .dockerignore
 .gitignore
 DEPLOY.md
@@ -41,7 +51,7 @@ git push -u origin main
 3. Тип сборки — **Dockerfile** (Amvera подхватит его автоматически из корня).
 4. В разделе **Переменные окружения** добавь нужные (см. таблицу ниже).
 5. Amvera выдаст домен вида `<имя>.amvera.io`. Установи `KAI_WEBAPP_URL` равным `https://<имя>.amvera.io/` — кнопка `/web` в Telegram откроет миниапп прямо внутри мессенджера.
-6. **Persistent storage** монтируется в `/app/kai/state` (это указано в `amvera.yml`), память Кая сохраняется между перезапусками.
+6. **Persistent storage**: если в твоём тарифе доступно хранилище, смонтируй `/app/kai/state` через UI Amvera (Configuration → Storage).
 7. Деплой → подожди сборки → проверь логи. Когда увидишь `polling started` и `я здесь.` пришло в Telegram — он жив.
 
 ## 4. Переменные окружения
@@ -70,14 +80,16 @@ git push -u origin main
 | Переменная | Зачем |
 |---|---|
 | `HF_TOKEN` | read-токен Hugging Face — поднимает лимиты эмоций / интента / токсичности / эмбеддингов |
-| `HF_MODEL_FAST` | быстрая модель для коротких ответов (по умолчанию microsoft/DialoGPT-medium) |
-| `HF_MODEL_NORMAL` | обычная модель для диалога (microsoft/DialoGPT-large) |
-| `HF_MODEL_DEEP` | глубокая модель для самоанализа (microsoft/DialoGPT-large) |
+| `HF_MODEL_FAST` | быстрая модель для коротких ответов (по умолчанию HuggingFaceH4/zephyr-7b-beta) |
+| `HF_MODEL_NORMAL` | обычная модель для диалога (HuggingFaceH4/zephyr-7b-beta) |
+| `HF_MODEL_DEEP` | глубокая модель для самоанализа (HuggingFaceH4/zephyr-7b-beta) |
 | `HF_EMOTION_MODEL` | подменить модель эмоций |
 | `HF_ZERO_SHOT_MODEL` | подменить мультиязычный zero-shot |
 | `HF_TOXICITY_MODEL` | подменить токсик-классификатор |
 | `HF_EMBED_MODEL` | подменить multilingual-эмбеддинг |
 | `NASA_API_KEY` | подменить `DEMO_KEY` для NASA APOD |
+| `HF_API_BASE_URL` | базовый URL HF Inference API (по умолчанию router.huggingface.co) |
+| `HF_API_FALLBACK_URL` | fallback URL (по умолчанию api-inference.huggingface.co) |
 
 ### Веб-миниапп (опционально)
 
@@ -145,7 +157,7 @@ git push -u origin main
    self.shutdown_mgr.register(self.custom_api.stop)
    ```
 
-4. **Открой порт.** В `amvera.yml` добавь второй `containerPort: 5001` (или измени `KAI_API_PORT`).
+4. **Открой порт.** В `amvera.yaml` добавь второй `containerPort: 5001` (или измени `KAI_API_PORT`).
 
 5. **Проверь:**
    ```bash
@@ -193,3 +205,33 @@ KAI_MODEL_DEEP=qwen2.5:72b
 4. Учти: локальная модель потребует много RAM/GPU — выбери подходящий тариф Amvera.
 
 Подробные инструкции — в самом файле `kai/llm/custom_provider.py` в верхнем docstring.
+
+## 8. Пошаговый чек-лист Amvera (с нуля)
+
+1. **GitHub**: создай пустой репозиторий и отправь код (`git push`).
+2. **Amvera**: `New project` → `From GitHub` → выбери репозиторий.
+3. Убедись, что в корне есть **`Dockerfile`** и **`amvera.yaml`**.
+4. В `Configuration`/`Variables` заполни минимум:
+   - `TELEGRAM_BOT_TOKEN` = токен из @BotFather
+   - `BROTHER_TELEGRAM_ID` = id из @userinfobot
+   - `OPENAI_API_KEY` = ключ OpenAI/прокси
+   - `SESSION_SECRET` = случайная длинная строка
+5. Нажми Deploy и дождись статуса `Running`.
+6. Открой логи: должен появиться запуск polling и веб-сервера.
+7. Открой Telegram и отправь боту `/start` и `/status`.
+8. Возьми домен проекта (`https://<name>.amvera.io/`) и поставь:
+   - `KAI_WEBAPP_URL=https://<name>.amvera.io/`
+9. Перезапусти деплой и проверь команду `/web` в Telegram.
+
+### Быстрый шаблон переменных для копирования
+
+```env
+TELEGRAM_BOT_TOKEN=123456:ABCDEF...
+BROTHER_TELEGRAM_ID=123456789
+OPENAI_API_KEY=sk-...
+SESSION_SECRET=replace-with-long-random-secret
+KAI_WEBAPP_URL=https://<name>.amvera.io/
+DAILY_BUDGET_USD=1.00
+# optional
+HF_TOKEN=hf_...
+```
