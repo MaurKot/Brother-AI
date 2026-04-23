@@ -24,9 +24,12 @@ OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
 HF_TOKEN = os.getenv("HF_TOKEN", "")
-HF_MODEL_FAST = os.getenv("HF_MODEL_FAST", "microsoft/DialoGPT-medium")
-HF_MODEL_NORMAL = os.getenv("HF_MODEL_NORMAL", "microsoft/DialoGPT-large")
-HF_MODEL_DEEP = os.getenv("HF_MODEL_DEEP", "microsoft/DialoGPT-large")  # Или другая модель для глубокого анализа
+HF_MODEL_FAST = os.getenv("HF_MODEL_FAST", "HuggingFaceH4/zephyr-7b-beta")
+HF_MODEL_NORMAL = os.getenv("HF_MODEL_NORMAL", "HuggingFaceH4/zephyr-7b-beta")
+HF_MODEL_DEEP = os.getenv("HF_MODEL_DEEP", "HuggingFaceH4/zephyr-7b-beta")  # Или другая модель для глубокого анализа
+
+HF_API_BASE_URL = os.getenv("HF_API_BASE_URL", "https://router.huggingface.co/hf-inference/models")
+HF_API_FALLBACK_URL = os.getenv("HF_API_FALLBACK_URL", "https://api-inference.huggingface.co/models")
 
 HEARTBEAT_SECONDS = 50
 MIN_SPONTANEOUS_INTERVAL_SECONDS = 3600
