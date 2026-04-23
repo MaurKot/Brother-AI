@@ -1,8 +1,11 @@
 """Custom LLM provider via Hugging Face InferenceClient."""
 
 from __future__ import annotations
+codex/analyze-and-fix-errors-tcgfls
 
 import asyncio
+
+main
 from typing import Any, Optional
 
 from .. import config
@@ -20,11 +23,17 @@ class CustomLLMProvider:
     def __init__(self) -> None:
         self.token = config.HF_TOKEN
         self.daily_budget = config.DAILY_BUDGET_USD
+codex/analyze-and-fix-errors-tcgfls
         self.spent_today = 0.0
+
+        self.spent_today = 0.0  # HF бесплатный
+        self._session: Optional[Any] = None
+main
 
     def remaining(self) -> float:
         return max(0.0, self.daily_budget - self.spent_today)
 
+ codex/analyze-and-fix-errors-tcgfls
     def _client(self, model: str) -> Any:
         from huggingface_hub import InferenceClient
 
@@ -39,6 +48,20 @@ class CustomLLMProvider:
             do_sample=True,
             return_full_text=False,
         )
+
+    async def _session_get(self) -> Any:
+        import aiohttp
+
+        if self._session is None or self._session.closed:
+            headers = {"Content-Type": "application/json"}
+            if self.token:
+                headers["Authorization"] = f"Bearer {self.token}"
+            self._session = aiohttp.ClientSession(
+                headers=headers,
+                timeout=aiohttp.ClientTimeout(total=30),
+            )
+        return self._session
+main
 
     async def complete(
         self,

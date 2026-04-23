@@ -10,3 +10,11 @@ build:
 run:
   containerPort: 5000
   persistenceMount: /app/kai/state
+codex/analyze-and-fix-errors-tcgfls
+
+main:
+  persistenceMountSize: 1Gi
+  scriptPath: ""
+
+codex/analyze-and-fix-errors-3w25pi
+main
