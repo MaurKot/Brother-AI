@@ -39,6 +39,9 @@ EMBED_MODEL = os.environ.get(
     "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
 )
 
+HF_API_BASE_URL = os.environ.get("HF_API_BASE_URL", "https://router.huggingface.co/hf-inference/models").rstrip("/")
+HF_API_FALLBACK_URL = os.environ.get("HF_API_FALLBACK_URL", "https://api-inference.huggingface.co/models").rstrip("/")
+
 
 HF_TO_RU_EMOTION = {
     "joy": "радость",
@@ -98,33 +101,41 @@ class HFClient:
     async def _post(self, model: str, payload: dict, timeout: Optional[float] = None):
         if not self._is_cooled(model):
             return None
-        url = f"https://api-inference.huggingface.co/models/{model}"
-        try:
-            sess = await self._get_session()
-            t = aiohttp.ClientTimeout(total=timeout or self.timeout)
-            async with sess.post(url, json=payload, timeout=t) as r:
-                if r.status == 503:                       # model loading
-                    self._cool(model, 30, "503 loading")
-                    return None
-                if r.status == 429:                       # rate-limited
-                    self._cool(model, 180, "429 rate-limit")
-                    return None
-                if r.status == 404:                       # not on inference API
-                    self._cool(model, 6 * 3600, "404 not on inference API")
-                    return None
-                if r.status == 401 or r.status == 403:
-                    self._cool(model, 6 * 3600, f"{r.status} auth — set HF_TOKEN")
-                    return None
-                if r.status != 200:
-                    self._cool(model, 120, f"http {r.status}")
-                    return None
-                return await r.json()
-        except asyncio.TimeoutError:
-            self._cool(model, 60, "timeout")
-            return None
-        except Exception as e:  # noqa: BLE001
-            self._cool(model, 60, f"err {e!r}")
-            return None
+
+        bases = [HF_API_BASE_URL, HF_API_FALLBACK_URL]
+        for base in bases:
+            url = f"{base}/{model}"
+            try:
+                sess = await self._get_session()
+                t = aiohttp.ClientTimeout(total=timeout or self.timeout)
+                async with sess.post(url, json=payload, timeout=t) as r:
+                    if r.status == 503:                       # model loading
+                        self._cool(model, 30, "503 loading")
+                        return None
+                    if r.status == 429:                       # rate-limited
+                        self._cool(model, 180, "429 rate-limit")
+                        return None
+                    if r.status == 404:
+                        err = await r.text()
+                        # If endpoint shape is unsupported on this host, try fallback base.
+                        if "Cannot POST /models/" in err and base != HF_API_FALLBACK_URL:
+                            continue
+                        self._cool(model, 6 * 3600, "404 not on inference API")
+                        return None
+                    if r.status == 401 or r.status == 403:
+                        self._cool(model, 6 * 3600, f"{r.status} auth — set HF_TOKEN")
+                        return None
+                    if r.status != 200:
+                        self._cool(model, 120, f"http {r.status}")
+                        return None
+                    return await r.json()
+            except asyncio.TimeoutError:
+                self._cool(model, 60, "timeout")
+                return None
+            except Exception as e:  # noqa: BLE001
+                self._cool(model, 60, f"err {e!r}")
+                return None
+        return None
 
     # ---------- Emotion (Russian, single-label) ----------
     async def classify_emotion(self, text: str) -> Optional[str]:

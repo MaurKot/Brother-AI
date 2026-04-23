@@ -51,11 +51,15 @@ git push -u origin main
 3. Тип сборки — **Dockerfile** (Amvera подхватит его автоматически из корня).
 4. В разделе **Переменные окружения** добавь нужные (см. таблицу ниже).
 5. Amvera выдаст домен вида `<имя>.amvera.io`. Установи `KAI_WEBAPP_URL` равным `https://<имя>.amvera.io/` — кнопка `/web` в Telegram откроет миниапп прямо внутри мессенджера.
+codex/analyze-and-fix-errors-tcgfls
+6. **Persistent storage**: если в твоём тарифе доступно хранилище, смонтируй `/app/kai/state` через UI Amvera (Configuration → Storage).
+
  main
 6. **Persistent storage** монтируется в `/app/kai/state` (это указано в `amvera.yaml`), память Кая сохраняется между перезапусками.
 
 6. **Persistent storage**: если в твоём тарифе доступно хранилище, смонтируй `/app/kai/state` через UI Amvera (Configuration → Storage).
  codex/analyze-and-fix-errors-3w25pi
+main
 7. Деплой → подожди сборки → проверь логи. Когда увидишь `polling started` и `я здесь.` пришло в Telegram — он жив.
 
 ## 4. Переменные окружения
@@ -84,14 +88,16 @@ git push -u origin main
 | Переменная | Зачем |
 |---|---|
 | `HF_TOKEN` | read-токен Hugging Face — поднимает лимиты эмоций / интента / токсичности / эмбеддингов |
-| `HF_MODEL_FAST` | быстрая модель для коротких ответов (по умолчанию microsoft/DialoGPT-medium) |
-| `HF_MODEL_NORMAL` | обычная модель для диалога (microsoft/DialoGPT-large) |
-| `HF_MODEL_DEEP` | глубокая модель для самоанализа (microsoft/DialoGPT-large) |
+| `HF_MODEL_FAST` | быстрая модель для коротких ответов (по умолчанию HuggingFaceH4/zephyr-7b-beta) |
+| `HF_MODEL_NORMAL` | обычная модель для диалога (HuggingFaceH4/zephyr-7b-beta) |
+| `HF_MODEL_DEEP` | глубокая модель для самоанализа (HuggingFaceH4/zephyr-7b-beta) |
 | `HF_EMOTION_MODEL` | подменить модель эмоций |
 | `HF_ZERO_SHOT_MODEL` | подменить мультиязычный zero-shot |
 | `HF_TOXICITY_MODEL` | подменить токсик-классификатор |
 | `HF_EMBED_MODEL` | подменить multilingual-эмбеддинг |
 | `NASA_API_KEY` | подменить `DEMO_KEY` для NASA APOD |
+| `HF_API_BASE_URL` | базовый URL HF Inference API (по умолчанию router.huggingface.co) |
+| `HF_API_FALLBACK_URL` | fallback URL (по умолчанию api-inference.huggingface.co) |
 
 ### Веб-миниапп (опционально)
 
