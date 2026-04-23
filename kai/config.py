@@ -20,9 +20,11 @@ MIN_SPONTANEOUS_INTERVAL_SECONDS = 3600
 NEUROCHEM_PERSIST_EVERY_TICKS = 20
 WATCHDOG_MAX_SILENCE_SECONDS = 180
 
-MODEL_FAST = "gpt-5-nano"
-MODEL_NORMAL = "gpt-5-mini"
-MODEL_DEEP = "gpt-5.4"
+import os as _os
+
+MODEL_FAST = _os.environ.get("KAI_MODEL_FAST", "gpt-5-nano")
+MODEL_NORMAL = _os.environ.get("KAI_MODEL_NORMAL", "gpt-5-mini")
+MODEL_DEEP = _os.environ.get("KAI_MODEL_DEEP", "gpt-5.4")
 
 PRICING_PER_1K = {
     MODEL_FAST: 0.0002,

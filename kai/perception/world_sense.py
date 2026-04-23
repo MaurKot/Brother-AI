@@ -86,12 +86,40 @@ class WorldSense:
         except Exception:
             stories = []
         if stories:
-            # Pick highest-scored not yet seen
             top = stories[0]
             self.curiosity.add(f"что такое и почему важно: {top.title}", weight=0.4)
             self.memory.save(
                 f"мир обсуждает: {top.title} ({top.score} голосов)",
                 emotion="любопытство", importance=0.3, tags=["world", "hn"],
             )
+
+        # ---- NASA Astronomy Picture of the Day → wonder seed
+        try:
+            apod = await self.world.apod()
+        except Exception:
+            apod = None
+        if apod and apod.title:
+            already = getattr(self, "_cache_apod_date", None) == apod.date
+            if not already:
+                self._cache_apod_date = apod.date
+                self.memory.save(
+                    f"сегодня небо: {apod.title}. {apod.explanation[:400]}",
+                    emotion="благоговение", importance=0.5, tags=["world", "apod"],
+                )
+                self.homeo.apply_event(self.neuro, "creative_act", scale=0.4)
+                self.curiosity.add(f"почему важно: {apod.title}", weight=0.3)
+
+        # ---- GitHub trending → ambient awareness of what's being built
+        try:
+            repos = await self.world.github_trending(language="python", limit=3)
+        except Exception:
+            repos = []
+        if repos:
+            top_repo = repos[0]
+            if top_repo.get("description"):
+                self.memory.save(
+                    f"люди делают: {top_repo['name']} — {top_repo['description']}",
+                    emotion="любопытство", importance=0.25, tags=["world", "github"],
+                )
 
         self._last_run = time.time()

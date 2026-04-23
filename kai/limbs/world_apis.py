@@ -7,6 +7,7 @@ All APIs picked here:
 """
 from __future__ import annotations
 import asyncio
+import os
 import time
 from dataclasses import dataclass
 from typing import List, Optional
@@ -38,6 +39,21 @@ class HNStory:
     title: str
     url: str
     score: int
+
+
+@dataclass
+class SunTimes:
+    sunrise_iso: str
+    sunset_iso: str
+    day_length_sec: int
+
+
+@dataclass
+class APODItem:
+    title: str
+    explanation: str
+    image_url: str
+    date: str
 
 
 WMO_RU = {
@@ -192,6 +208,98 @@ class WorldAPIs:
             ))
         self._put("hn_top", out, ttl=1800)
         return out[:n]
+
+    # ---------- Sunrise / Sunset (no key) ----------
+    async def sun_times(self, lat: float = 55.75, lon: float = 37.62) -> Optional[SunTimes]:
+        """Sun events for given coords. Default: Moscow."""
+        key = f"sun:{lat:.2f}:{lon:.2f}"
+        c = self._cached(key)
+        if c:
+            return c
+        url = (
+            "https://api.sunrise-sunset.org/json"
+            f"?lat={lat}&lng={lon}&formatted=0"
+        )
+        try:
+            sess = await self._get_session()
+            async with sess.get(url) as r:
+                if r.status != 200:
+                    return None
+                data = await r.json()
+        except Exception as e:  # noqa: BLE001
+            logger.warn("world", f"sun failed: {e!r}")
+            return None
+        try:
+            res = data.get("results", {})
+            snap = SunTimes(
+                sunrise_iso=res["sunrise"],
+                sunset_iso=res["sunset"],
+                day_length_sec=int(res.get("day_length", 0)),
+            )
+            self._put(key, snap, ttl=12 * 3600)
+            return snap
+        except Exception as e:  # noqa: BLE001
+            logger.warn("world", f"sun parse: {e!r}")
+            return None
+
+    # ---------- NASA APOD (DEMO_KEY allows ~30/h, no signup) ----------
+    async def apod(self) -> Optional[APODItem]:
+        c = self._cached("apod")
+        if c:
+            return c
+        api_key = os.environ.get("NASA_API_KEY", "DEMO_KEY")
+        url = f"https://api.nasa.gov/planetary/apod?api_key={api_key}"
+        try:
+            sess = await self._get_session()
+            async with sess.get(url) as r:
+                if r.status != 200:
+                    return None
+                data = await r.json()
+        except Exception as e:  # noqa: BLE001
+            logger.warn("world", f"apod failed: {e!r}")
+            return None
+        try:
+            item = APODItem(
+                title=data.get("title", "")[:200],
+                explanation=data.get("explanation", "")[:1500],
+                image_url=data.get("hdurl") or data.get("url", ""),
+                date=data.get("date", ""),
+            )
+            self._put("apod", item, ttl=12 * 3600)
+            return item
+        except Exception:
+            return None
+
+    # ---------- GitHub trending repos (anonymous: 60/h) ----------
+    async def github_trending(self, language: str = "python", limit: int = 5) -> List[dict]:
+        key = f"gh:{language}:{limit}"
+        c = self._cached(key)
+        if c is not None:
+            return c
+        from datetime import datetime, timedelta
+        since = (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%d")
+        url = (
+            "https://api.github.com/search/repositories"
+            f"?q=created:>{since}+language:{language}&sort=stars&order=desc&per_page={limit}"
+        )
+        try:
+            sess = await self._get_session()
+            async with sess.get(url) as r:
+                if r.status != 200:
+                    return []
+                data = await r.json()
+        except Exception:
+            return []
+        out = []
+        for it in data.get("items", [])[:limit]:
+            out.append({
+                "name": it.get("full_name", ""),
+                "description": (it.get("description") or "")[:300],
+                "stars": it.get("stargazers_count", 0),
+                "url": it.get("html_url", ""),
+            })
+        self._put(key, out, ttl=6 * 3600)
+        return out
 
     # ---------- Wiktionary (no key) ----------
     async def define(self, word: str, lang: str = "ru") -> Optional[str]:
