@@ -1,96 +1,48 @@
-"""Custom LLM provider — STUB for plugging your own model.
+"""Custom LLM provider — реализация через Hugging Face Inference API (бесплатный).
 
 ══════════════════════════════════════════════════════════════════════════════
-КАК СНЯТЬ ЗАГЛУШКУ И ПОДКЛЮЧИТЬ СВОЮ LLM
+КАК ИСПОЛЬЗОВАТЬ
 ══════════════════════════════════════════════════════════════════════════════
 
-Сейчас этот файл — заглушка. Чтобы Кай заговорил через ТВОЮ собственную модель,
-есть три сценария — выбери один:
+1. Получи токен на https://huggingface.co/settings/tokens
+2. Задай переменную окружения: HF_TOKEN=your_token
+3. В kai/kai.py уже настроено использование CustomLLMProvider
 
-──────────────────────────────────────────────────────────────────────────────
-СЦЕНАРИЙ A. У тебя OpenAI-совместимый эндпоинт
-   (Ollama, vLLM, LM Studio, llama.cpp server, любой proxy типа OpenRouter и т.д.)
-──────────────────────────────────────────────────────────────────────────────
-   САМЫЙ ПРОСТОЙ ВАРИАНТ — кода менять не нужно вообще.
-   Достаточно задать переменные окружения:
-
-      OPENAI_API_KEY = "<твой ключ или 'ollama' для локального>"
-      OPENAI_BASE_URL = "https://твой-сервер/v1"
-      KAI_MODEL_FAST = "llama3.1:8b"        # быстрая модель для коротких ответов
-      KAI_MODEL_NORMAL = "llama3.1:70b"     # обычная модель для диалога
-      KAI_MODEL_DEEP = "qwen2.5:72b"        # глубокая для самоанализа
-
-   Существующий LLMRouter (kai/llm/router.py) автоматически их подхватит —
-   он использует AsyncOpenAI клиент, который работает с любым OpenAI-совместимым
-   эндпоинтом.
-
-──────────────────────────────────────────────────────────────────────────────
-СЦЕНАРИЙ B. У тебя свой HTTP API (не OpenAI-совместимый)
-──────────────────────────────────────────────────────────────────────────────
-   1. Реализуй метод `complete()` в классе `CustomLLMProvider` ниже.
-      Он должен принимать prompt + system + max_tokens + depth и
-      вернуть строку с ответом.
-
-   2. В файле kai/kai.py замени строку:
-         self.llm = LLMRouter()
-      на:
-         from .llm.custom_provider import CustomLLMProvider
-         self.llm = CustomLLMProvider()
-
-   3. Задай нужные переменные окружения, например:
-         CUSTOM_LLM_URL = "https://my-llm.example.com/api/generate"
-         CUSTOM_LLM_TOKEN = "..."
-
-──────────────────────────────────────────────────────────────────────────────
-СЦЕНАРИЙ C. У тебя локальная модель внутри того же процесса
-   (transformers, llama-cpp-python и т.д.)
-──────────────────────────────────────────────────────────────────────────────
-   1. Установи нужный пакет (например `pip install llama-cpp-python`).
-   2. Загрузи модель в `__init__` ниже.
-   3. Реализуй `complete()` через свою модель.
-   4. Подмени self.llm в kai/kai.py как в сценарии B.
-
-   Внимание: локальная модель потребует много RAM/GPU и Amvera должна быть
-   с подходящим тарифом. Лучше начать с A или B.
+Модели настраиваются через переменные:
+- HF_MODEL_FAST: быстрая модель (по умолчанию microsoft/DialoGPT-medium)
+- HF_MODEL_NORMAL: обычная (microsoft/DialoGPT-large)
+- HF_MODEL_DEEP: глубокая (microsoft/DialoGPT-large)
 
 ══════════════════════════════════════════════════════════════════════════════
 """
 from __future__ import annotations
-import os
 from typing import Optional
 
 import aiohttp
 
+from .. import config
 from ..logger import logger
 
 
 class CustomLLMProvider:
-    """STUB — реализуй complete() под свой API.
+    """Реализация через Hugging Face Inference API.
 
     Должен иметь те же методы что и LLMRouter:
       - async def complete(prompt, depth, max_tokens, system) -> str
-      - def remaining() -> float                              (для совместимости)
-      - daily_budget: float                                   (для совместимости)
-      - spent_today: float                                    (для совместимости)
+      - def remaining() -> float
+      - daily_budget: float
+      - spent_today: float
       - async def aclose() -> None
     """
 
     def __init__(self) -> None:
-        self.url = os.environ.get("CUSTOM_LLM_URL", "").strip()
-        self.token = os.environ.get("CUSTOM_LLM_TOKEN", "").strip()
-        # Совместимость с интерфейсом LLMRouter
-        self.daily_budget = float(os.environ.get("DAILY_BUDGET_USD", "999.99"))
-        self.spent_today = 0.0
+        self.token = config.HF_TOKEN
+        self.daily_budget = config.DAILY_BUDGET_USD
+        self.spent_today = 0.0  # HF бесплатный
         self._session: Optional[aiohttp.ClientSession] = None
 
-        if not self.url:
-            logger.warn(
-                "custom_llm",
-                "CUSTOM_LLM_URL не задан — заглушка вернёт пустые ответы. "
-                "См. инструкции в начале файла kai/llm/custom_provider.py.",
-            )
-
     def remaining(self) -> float:
+        """Оставшийся бюджет (для совместимости с LLMRouter)."""
         return max(0.0, self.daily_budget - self.spent_today)
 
     async def _session_get(self) -> aiohttp.ClientSession:
@@ -111,27 +63,43 @@ class CustomLLMProvider:
         max_tokens: int = 200,
         system: Optional[str] = None,
     ) -> str:
-        """ЗАГЛУШКА. Замени тело на запрос к твоему API.
+        """Реализация через Hugging Face Inference API."""
+        model = {
+            "fast": config.HF_MODEL_FAST,
+            "normal": config.HF_MODEL_NORMAL,
+            "deep": config.HF_MODEL_DEEP,
+        }.get(depth, config.HF_MODEL_NORMAL)
 
-        Пример минимальной реализации (псевдокод):
+        if not self.token:
+            return "HF_TOKEN not set"
 
-            sess = await self._session_get()
-            payload = {
-                "system": system or "",
-                "prompt": prompt,
-                "max_tokens": max_tokens,
-                "depth": depth,  # передавай если у тебя есть выбор моделей
+        sess = await self._session_get()
+        url = f"https://api-inference.huggingface.co/models/{model}"
+        payload = {
+            "inputs": prompt,
+            "parameters": {
+                "max_length": len(prompt.split()) + max_tokens,
+                "do_sample": True,
+                "temperature": 0.7,
             }
-            async with sess.post(self.url, json=payload) as r:
+        }
+        try:
+            async with sess.post(url, json=payload) as r:
                 if r.status != 200:
+                    error = await r.text()
+                    logger.error("custom_llm", f"HF API error {r.status}: {error}")
                     return ""
                 data = await r.json()
-                return data.get("text", "")
-        """
-        if not self.url:
+                if isinstance(data, list) and data:
+                    generated = data[0].get("generated_text", "")
+                    # Удалить исходный prompt из ответа
+                    if generated.startswith(prompt):
+                        return generated[len(prompt):].strip()
+                    return generated.strip()
+                return ""
+        except Exception as e:
+            logger.error("custom_llm", f"Exception: {e}")
             return ""
-        # TODO: реализуй настоящий запрос к своему API
-        return ""
 
     async def aclose(self) -> None:
         if self._session and not self._session.closed:

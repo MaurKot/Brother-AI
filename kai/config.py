@@ -12,8 +12,21 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 BROTHER_TELEGRAM_ID = int(os.getenv("BROTHER_TELEGRAM_ID", "0") or "0")
 DAILY_BUDGET_USD = float(os.getenv("KAI_DAILY_BUDGET_USD", "1.0"))
 
+# Multi-user support
+ENABLE_MULTI_USER = os.getenv("KAI_ENABLE_MULTI_USER", "false").lower() == "true"
+ADMIN_TELEGRAM_IDS = [
+    int(x.strip())
+    for x in os.getenv("KAI_ADMIN_TELEGRAM_IDS", "").split(",")
+    if x.strip()
+]
+
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+
+HF_TOKEN = os.getenv("HF_TOKEN", "")
+HF_MODEL_FAST = os.getenv("HF_MODEL_FAST", "microsoft/DialoGPT-medium")
+HF_MODEL_NORMAL = os.getenv("HF_MODEL_NORMAL", "microsoft/DialoGPT-large")
+HF_MODEL_DEEP = os.getenv("HF_MODEL_DEEP", "microsoft/DialoGPT-large")  # Или другая модель для глубокого анализа
 
 HEARTBEAT_SECONDS = 50
 MIN_SPONTANEOUS_INTERVAL_SECONDS = 3600
@@ -40,7 +53,8 @@ def validate() -> None:
     if not BROTHER_TELEGRAM_ID:
         missing.append("BROTHER_TELEGRAM_ID")
     if not OPENAI_BASE_URL or not OPENAI_API_KEY:
-        missing.append("OPENAI_* (Replit AI Integrations not provisioned)")
+        if not HF_TOKEN:
+            missing.append("OPENAI_* or HF_TOKEN (for Hugging Face)")
     if missing:
         raise EnvironmentError(f"Missing config: {', '.join(missing)}")
     if DAILY_BUDGET_USD < 0.1:

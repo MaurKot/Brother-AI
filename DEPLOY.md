@@ -70,6 +70,9 @@ git push -u origin main
 | Переменная | Зачем |
 |---|---|
 | `HF_TOKEN` | read-токен Hugging Face — поднимает лимиты эмоций / интента / токсичности / эмбеддингов |
+| `HF_MODEL_FAST` | быстрая модель для коротких ответов (по умолчанию microsoft/DialoGPT-medium) |
+| `HF_MODEL_NORMAL` | обычная модель для диалога (microsoft/DialoGPT-large) |
+| `HF_MODEL_DEEP` | глубокая модель для самоанализа (microsoft/DialoGPT-large) |
 | `HF_EMOTION_MODEL` | подменить модель эмоций |
 | `HF_ZERO_SHOT_MODEL` | подменить мультиязычный zero-shot |
 | `HF_TOXICITY_MODEL` | подменить токсик-классификатор |

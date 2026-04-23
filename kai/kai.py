@@ -25,7 +25,7 @@ from .limbs.telegram_bot import TelegramBot
 from .limbs.web_search import WebSearch
 from .limbs.world_apis import WorldAPIs
 from .perception.world_sense import WorldSense
-from .llm.router import LLMRouter
+from .llm.custom_provider import CustomLLMProvider
 from .logger import logger
 from .mind.analogy import AnalogySystem
 from .mind.anticipation import AnticipationSystem
@@ -105,7 +105,7 @@ class Kai:
         self.contradiction = ContradictionDetector()
 
         # Composed objects
-        self.llm = LLMRouter()
+        self.llm = CustomLLMProvider()
         self.memory = Memory()
         self.working = WorkingMemory()
         self.attention = AttentionSystem(self.neuro)
