@@ -51,7 +51,11 @@ git push -u origin main
 3. Тип сборки — **Dockerfile** (Amvera подхватит его автоматически из корня).
 4. В разделе **Переменные окружения** добавь нужные (см. таблицу ниже).
 5. Amvera выдаст домен вида `<имя>.amvera.io`. Установи `KAI_WEBAPP_URL` равным `https://<имя>.amvera.io/` — кнопка `/web` в Telegram откроет миниапп прямо внутри мессенджера.
+ main
+6. **Persistent storage** монтируется в `/app/kai/state` (это указано в `amvera.yaml`), память Кая сохраняется между перезапусками.
+
 6. **Persistent storage**: если в твоём тарифе доступно хранилище, смонтируй `/app/kai/state` через UI Amvera (Configuration → Storage).
+ codex/analyze-and-fix-errors-3w25pi
 7. Деплой → подожди сборки → проверь логи. Когда увидишь `polling started` и `я здесь.` пришло в Telegram — он жив.
 
 ## 4. Переменные окружения
