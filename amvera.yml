@@ -1,0 +1,15 @@
+meta:
+  environment: docker
+  toolchain:
+    name: docker
+    version: latest
+
+build:
+  image: dockerfile
+  dockerfile: Dockerfile
+
+run:
+  containerPort: 5000
+  persistenceMount: /app/kai/state
+  persistenceMountSize: 1Gi
+  scriptPath: ""

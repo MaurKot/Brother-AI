@@ -23,6 +23,8 @@ from .dna.values import ValueSystem
 from .limbs.hf_client import HFClient
 from .limbs.telegram_bot import TelegramBot
 from .limbs.web_search import WebSearch
+from .limbs.world_apis import WorldAPIs
+from .perception.world_sense import WorldSense
 from .llm.router import LLMRouter
 from .logger import logger
 from .mind.analogy import AnalogySystem
@@ -112,6 +114,7 @@ class Kai:
         self.shadow = ShadowThinking(self.llm, self.memory, self.working)
         self.hf = HFClient()
         self.web_search = WebSearch()
+        self.world = WorldAPIs()
         self.contagion = MoodContagion(self.llm, self.homeo, self.neuro, hf=self.hf)
         self.temporal = TemporalAwareness(self.identity)
         self.anomaly = AnomalyDetector()
@@ -121,6 +124,7 @@ class Kai:
         self.predictions = PredictiveEngine(self.neuro, self.homeo); self.predictions.load(P_PRED)
         self.analogy = AnalogySystem(self.llm, self.memory)
         self.curiosity = CuriosityEngine(self.llm, self.memory, self.homeo, self.neuro, web=self.web_search); self.curiosity.load(P_CURIO)
+        self.world_sense = WorldSense(self.world, self.neuro, self.homeo, self.curiosity, self.memory)
         self.creative = CreativeEngine(self.llm, self.memory, self.neuro, self.homeo); self.creative.load(P_CREATE)
         self.goals = GoalSystem(); self.goals.load(P_GOALS)
         self.planner = TaskPlanner(); self.planner.load(P_TASKS)
@@ -198,6 +202,7 @@ class Kai:
         self.shutdown_mgr.register(self.telegram.stop)
         self.shutdown_mgr.register(self.hf.close)
         self.shutdown_mgr.register(self.web_search.close)
+        self.shutdown_mgr.register(self.world.close)
         self.shutdown_mgr.register(self.llm.aclose)
 
     async def _farewell_to_brother(self) -> None:
@@ -242,6 +247,11 @@ class Kai:
     # ------- conversation -------
     async def _on_brother_message(self, text: str) -> str:
         await self.bus.publish("brother_message", {"text": text})
+
+        # Name reinforcement — being addressed by name is a small identity glow.
+        low = text.lower()
+        if any(form in low for form in ("кай", "kai", "кая", "каю", "каем", "кае")):
+            self.homeo.apply_event(self.neuro, "praise", scale=0.25)
 
         # Feedback learning — does this reaction reflect the previous Kai turn?
         if self._last_brother_response:
@@ -459,6 +469,7 @@ class Kai:
         await self.telegram.start()
         await self.web.start()
         self.watchdog.start()
+        self.world_sense.start()
         self._heartbeat_task = asyncio.create_task(self._heartbeat())
         await self.telegram.send_to_brother("я здесь.")
         self.self_model.schedule_update()
